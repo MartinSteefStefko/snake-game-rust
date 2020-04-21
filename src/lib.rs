@@ -2,6 +2,7 @@ mod utils;
 
 use wasm_bindgen::prelude::*;
 use js_sys::Array;
+use rand::Rng;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -17,6 +18,13 @@ extern {
 #[wasm_bindgen]
 pub fn greet() {
     alert("Hello, rust-js-snake-game!");
+
+}
+
+static EPSILON:f64 =0.0000001;
+fn are_equal(one:f64,another:f64) -> bool {
+    // if difference between two compared values is less than small value we assume that the values are equal
+    (one - another).abs()< EPSILON
 }
 
 #[wasm_bindgen]
@@ -59,6 +67,71 @@ impl Vector{
     pub fn scale_by(&self,number:f64) -> Vector {
         Vector::new(self.x*number,self.y*number)
     }
+
+    pub fn length(&self) ->f64{
+        self.x.hypot(self.y)
+    }
+}
+
+pub struct Segment<'a>{
+    pub start: &'a Vector,
+    // vouu after initialize start as vector it automatically suggest end with same syntax
+    pub end: &'a Vector,
+}
+// create constructor for the segment
+impl<'a> Segment<'a>{
+    // init public function new(start: &'a Vector, end: &'a Vector) is will return Segment
+    pub fn new(start: &'a Vector, end: &'a Vector) -> Segment<'a>{
+        Segment{start: start, end: end}
+    }
+
+    pub fn get_vector(&self) -> Vector{
+        self.end.subtract(&self.start)
+    }
+
+    pub fn length(&self) ->f64{
+        self.get_vector().length()
+    }
+
+    pub fn is_point_inside(&self,point:&Vector)->bool{
+        let first=Segment::new(self.start,point);
+        let second=Segment::new(point,self.end);
+        are_equal(self.length(),first.length()+second.length())
+    }
+}
+
+// 
+fn get_segments_from_vectors(vectors:&[Vector])-> Vec<Segment> {
+        // simple, if you have 5 edges you shoud have 4 segments
+    let pairs = vectors[..vectors.len()-1].iter().zip(&vectors[1..]);
+    pairs
+        .map(|(s,e)| Segment::new(s,e))
+        .collect::<Vec<Segment>>()
+}
+
+// get_food() will take width,height, snake vector and it will return vector
+fn get_food(width: i32, height: i32, snake: &[Vector])->Vector{
+    // TODO implement
+
+    let segments = get_segments_from_vectors(snake);
+    // 
+    let mut free_positions: Vec<Vector> = Vec::new();
+    for x in 0..width {
+        for y in 0..height{
+            // go from 0 up to current width and height of the window
+            // let point be vector or new x and y coordinates originated from width and height converted to f64 from i32 +0.5 
+            let point = Vector::new(f64::from(x) + 0.5,f64::from(y) + 0.5);
+            // checking that none of the segmets of snake intersect the point
+            if segments.iter().all(|s| !s.is_point_inside(&point)) {
+                // if there are no intersetions push point to free_positions
+                free_positions.push(point);
+            }
+        }
+    }
+    // create random indexes in range of (0,free_positions.len())
+    let index = rand::thread_rng().gen_range(0,free_positions.len());
+    free_positions[index]
+
 }
 
 // this is constructor for the Game
@@ -76,7 +149,7 @@ impl Game{
         let snake = vec![tailtip,head];
         // food will be half of the cells located in the first cell
         // TODO: place foo in random cells
-        let food = Vector::new(0.5,0.5);
+        let food = get_food(width,height,&snake);
 
         // Returning the instance of the game struct
         Game {
