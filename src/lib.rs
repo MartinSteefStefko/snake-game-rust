@@ -147,6 +147,17 @@ fn get_food(width: i32, height: i32, snake: &[Vector])->Vector{
     free_positions[index]
 
 }
+// TOP, RIGHT <DOWN LEFT were suggested by extension wauu
+#[wasm_bindgen]
+pub enum Movement{
+    TOP,
+    RIGHT,
+    DOWN,
+    LEFT,
+
+}
+
+
 
 // this is constructor for the Game
 #[wasm_bindgen]
@@ -183,8 +194,8 @@ impl Game{
             self.snake.clone().into_iter().map(JsValue::from).collect()
             // colectin all the snake from self.snake.clone().into_iter() and mappi it to JsValue::
     }
-
-    fn process_movement(&mut self,timespan:f64) {
+    // passing movement also to process_movement
+    fn process_movement(&mut self,timespan:f64, movement:Option<Movement>) {
         // 1 block/per second * 2 seconds duration of last update
         let distance = self.speed*timespan;
         // tail will be mutable and also be new()vector
@@ -215,6 +226,28 @@ impl Game{
         self.snake =tail;
         // old head = popped Game.snake
         let old_head = self.snake.pop().unwrap();
+        // if there is movement
+        let movement.is_some(){
+            let new_direction = match movement.unwrap(){
+                Movement::TOP =>Vector{
+                    x: 0_f64,
+                    y: -1_f64,
+                },
+                Movement::RIGHT =>Vector{
+                    x: 1_f64,
+                    y: 0_f64,
+                },
+                // down must bu positive one because game start at top left corner
+                Movement::DOWN =>Vector{
+                    x: 0_f64,
+                    y: 1_f64,
+                },
+                Movement::LEFT =>Vector{
+                    x: -1_f64,
+                    y: 0_f64,
+                }
+            }
+        }
         // adding Game.direction scaled by distance and assigning it to new head
         let new_head = old_head.add(&self.direction.scale_by(distance));
         // push new head into Game.snake
@@ -222,7 +255,9 @@ impl Game{
     }
 
     // function process which receives self and timespan which is duration from last update
-    pub fn process(&mut self,timespan:f64){
-        self.process_movement(timespan);
+    // passing movement enum will be optional because i won't allways want to passid it to them function
+    // most likely when I am no on touching any diretion at keyboard
+    pub fn process(&mut self,timespan:f64, movement:Option<Movement>){
+        self.process_movement(timespan,movement);
     }
 }
