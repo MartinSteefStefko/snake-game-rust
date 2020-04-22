@@ -63,6 +63,12 @@ impl Vector{
         // where other is &Vector returned vector? 
         Vector::new(self.x - other.x,self.y - other.y)
     }
+
+    pub fn add(&self,other: &Vector)-> Vector {
+        // create new instance of a Vector where x is self.x-other.x,
+        // where other is &Vector returned vector? 
+        Vector::new(self.x + other.x,self.y + other.y)
+    }
     //  create new vector 
     pub fn scale_by(&self,number:f64) -> Vector {
         Vector::new(self.x*number,self.y*number)
@@ -70,6 +76,11 @@ impl Vector{
 
     pub fn length(&self) ->f64{
         self.x.hypot(self.y)
+    }
+    // this will take self vector and return value from 0 to 1 according to the max number of current vector
+    pub fn normalize(&self) -> Vector{
+        // 
+        self.scale_by(1_f64/self.length())
     }
 }
 
@@ -86,14 +97,17 @@ impl<'a> Segment<'a>{
     }
 
     pub fn get_vector(&self) -> Vector{
+        // subtracting end from start to get length of the snake
         self.end.subtract(&self.start)
     }
 
     pub fn length(&self) ->f64{
+        // actuallz get length on the vector
         self.get_vector().length()
     }
 
     pub fn is_point_inside(&self,point:&Vector)->bool{
+        // is the point inside of the snake
         let first=Segment::new(self.start,point);
         let second=Segment::new(point,self.end);
         are_equal(self.length(),first.length()+second.length())
@@ -168,5 +182,47 @@ impl Game{
     pub fn get_snake(&self)->Array{
             self.snake.clone().into_iter().map(JsValue::from).collect()
             // colectin all the snake from self.snake.clone().into_iter() and mappi it to JsValue::
+    }
+
+    fn process_movement(&mut self,timespan:f64) {
+        // 1 block/per second * 2 seconds duration of last update
+        let distance = self.speed*timespan;
+        // tail will be mutable and also be new()vector
+        let mut tail : Vec<Vector>= Vec::new();
+        let mut snake_distance = distance;
+        while self.snake.len()>1{
+            // remove first element of the snake
+            let point = self.snake.remove(0);
+            // let next to be new snake [0] element and store it as point
+            let next = &self.snake[0];
+            // create segment as new Segment with &point, next as argument
+            let segment =Segment::new(&point,next);
+            let length=segment.length();
+            if length>= snake_distance {
+                let vector = segment.get_vector().normalize().scale_by(snake_distance);
+                // push to the tail point + &vector
+                tail.push(point.add(&vector));
+                break;
+            }else{
+                // 
+                // subtract length from snake_distance
+                snake_distance-=length;
+            }
+
+        }
+        // updating the tail with what has last from the snake
+        tail.append(&mut self.snake);
+        self.snake =tail;
+        // old head = popped Game.snake
+        let old_head = self.snake.pop().unwrap();
+        // adding Game.direction scaled by distance and assigning it to new head
+        let new_head = old_head.add(&self.direction.scale_by(distance));
+        // push new head into Game.snake
+        self.snake.push(new_head);
+    }
+
+    // function process which receives self and timespan which is duration from last update
+    pub fn process(&mut self,timespan:f64){
+        self.process_movement(timespan);
     }
 }
