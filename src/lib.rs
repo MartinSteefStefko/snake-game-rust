@@ -92,6 +92,10 @@ impl Vector{
         let sum =self.add(other);
         sum.equal_to(&Vector::new(0_f64, 0_f64))
     }
+    
+    pub fn dot_product(&self, other: &Vector) -> f64 {
+        self.x * other.x + self.y * other.y
+    }
 }
 
 pub struct Segment<'a>{
@@ -121,6 +125,14 @@ impl<'a> Segment<'a>{
         let first=Segment::new(self.start,point);
         let second=Segment::new(point,self.end);
         are_equal(self.length(),first.length()+second.length())
+    }
+    // linear algebra statements to get projected points
+    pub fn get_projected_point(&self, point: &Vector) -> Vector {
+        let vector = self.get_vector();
+        let diff = point.subtract(&self.start);
+        let u = diff.dot_product(&vector) / vector.dot_product(&vector);
+        let scaled = vector.scale_by(u);
+        self.start.add(&scaled)
     }
 }
 
@@ -315,11 +327,56 @@ impl Game{
         // push new head into Game.snake
         self.snake.push(new_head);
     }
+    // process food should check if the is intersetion between postion of the food and snake head than make snake longer
+    // 
+    fn process_food(&mut self){
+        // let snake_len and after that everything else has been added
+        let snake_len = self.snake.len();
+        let head_segment = Segment::new(&self.snake[snake_len-2],&self.snake[snake_len-1]);
+        //  if head segmen has point of self.food inside 
+        if head_segment.is_point_inside(&self.food){
+            // grab last point of the snake
+            let tail_end = &self.snake[0];
+            // grab one point behind the last point
+            let before_tail_end = &self.snake[1];
+            let tail_segment = Segment::new(&before_tail_end,&tail_end);
+            // add normalized tail segment the the tail and call new_tail_end
+            let new_tail_end = tail_end.add(&tail_segment.get_vector().normalize());
+            // udpating snake[0] element to be new_tail_end
+            self.snake[0] = new_tail_end;
+            // updating food postion
+            self.food = get_food(self.width,self.height,&self.snake);
+            // updating score by one
+            self.score += 1;
+        }
+
+    }
 
     // function process which receives self and timespan which is duration from last update
     // passing movement enum will be optional because i won't allways want to passid it to them function
     // most likely when I am no on touching any diretion at keyboard
     pub fn process(&mut self,timespan:f64, movement:Option<Movement>){
         self.process_movement(timespan,movement);
+        self.process_food();
+    }
+    // this has been added (&self) -> bool{
+    pub fn is_over(&self) -> bool{
+        // is ove when snake segment itersect with itself or the wall
+        let snake_len = self.snake.len();
+        let last = self.snake[snake_len-1];
+        let Vector{x,y} = last;
+        if x<0_f64 || x>f64::from(self.width) || y<0_f64 || y>f64::from(self.height){
+            return true;
+        }
+        if snake_len < 5 {
+            return false;
+        }
+
+        let segments = get_segments_from_vectors(&self.snake[..snake_len -3]);
+        segments.iter().any(|segment|{
+            let projected = segment.get_projected_point(&last);
+            segment.is_point_inside(&projected)&& Segment::new(&last,&projected).length()<0.5
+        })
+
     }
 }
