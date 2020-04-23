@@ -82,6 +82,16 @@ impl Vector{
         // 
         self.scale_by(1_f64/self.length())
     }
+    // check if two vector are equal and that is when x and y are equal -> return bool
+    pub fn equal_to(&self, other:&Vector)->bool{
+        // this was returned by the tabNine ) && are_equal(self.y
+        are_equal(self.x,other.x) && are_equal(self.y,other.y)
+    }
+    // add this vector to other one and check if their sum is equal tom sum x y with 0_f64 value
+    pub fn is_opposite(&self,other:&Vector)->bool{
+        let sum =self.add(other);
+        sum.equal_to(&Vector::new(0_f64, 0_f64))
+    }
 }
 
 pub struct Segment<'a>{
@@ -226,8 +236,9 @@ impl Game{
         self.snake =tail;
         // old head = popped Game.snake
         let old_head = self.snake.pop().unwrap();
+        let new_head = old_head.add(&self.direction.scale_by(distance));
         // if there is movement
-        let movement.is_some(){
+        if movement.is_some(){
             let new_direction = match movement.unwrap(){
                 Movement::TOP =>Vector{
                     x: 0_f64,
@@ -245,11 +256,62 @@ impl Game{
                 Movement::LEFT =>Vector{
                     x: -1_f64,
                     y: 0_f64,
-                }
+                },
+            };
+            // snake cannot go from left to right directly, it must first go there from up or down 
+            if !self.direction.is_opposite(&new_direction) 
+                // if current direction is not opposite to new direction
+                && !self.direction.equal_to(&new_direction){
+                    // updating snake direction right away
+                    let Vector{x:old_x, y:old_y} =old_head;
+                    // if the snake is in th emiddle of the cell round to whole and then change direction
+                    let old_x_rounded = old_x.round();
+                    let old_y_rounded = old_y.round();
+                    let new_x_rounded = new_head.x.round();
+                    let new_y_rounded = new_head.y.round();
+                    // check on rouden ones if they  are equal
+                    // this has been added by tabNine new_x_rounded)
+                    let rounded_x_changed = !are_equal(old_x_rounded, new_x_rounded);
+                    let rounded_y_changed = !are_equal(old_y_rounded, new_y_rounded);
+                    if(rounded_x_changed||rounded_y_changed){
+                        let(old,old_rounded,new_rounded) = if rounded_x_changed{
+                            (old_x,old_x_rounded,new_x_rounded)
+                        }else{
+                            (old_y,old_y_rounded,new_y_rounded)
+                        };
+                        let breakpoint_component = old_rounded 
+                        // add to the break point if rounded>old_rounded else subtract
+                            + (if new_rounded>old_rounded{
+                                0.5_f64
+                            }else{
+                                -0.5_f64
+                            });
+                            // if rounded_x_changed create new Vector from breakpoint_component beeing x and old_y
+                            let breakpoint = if rounded_x_changed {
+                                Vector::new(breakpoint_component,old_y)
+                            }else{
+                                Vector::new(old_x,breakpoint_component)
+                            };
+                            let vector = new_direction.scale_by(distance-(old-breakpoint_component).abs());
+                            let head = breakpoint.add(&vector);
+                            // pushing breakpoint and new_direction.scaled_by to the Game.snake
+                            self.snake.push(breakpoint);
+                            self.snake.push(head);
+                            self.direction=new_direction;
+                            return;
+
+                    }
+
+                    // if there was any change we need find the break point where the snake changes direction
+                    
+
+                
+                // and if current direction is not equal to new direction
+                
             }
         }
         // adding Game.direction scaled by distance and assigning it to new head
-        let new_head = old_head.add(&self.direction.scale_by(distance));
+        // let new_head = old_head.add(&self.direction.scale_by(distance));
         // push new head into Game.snake
         self.snake.push(new_head);
     }
